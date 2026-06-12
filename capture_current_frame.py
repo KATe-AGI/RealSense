@@ -20,8 +20,8 @@ from realsense_capture.storage import save_capture
 r'''
 windows:
 
-# 单帧采集
-python capture_current_frame.py ` (供SDK二开用)
+# 单帧采集--(供SDK二开用)
+python capture_current_frame.py ` 
   --mode single `
   --output-dir E:\camera\test_20260612
 
@@ -52,7 +52,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--color-fps", type=int, default=30, help="Color stream FPS. Default: 30")
     parser.add_argument("--depth-size", type=int, nargs=2, metavar=("WIDTH", "HEIGHT"), default=(1280, 720), help="Depth stream size as (width, height). Default: (1280, 720)")
     parser.add_argument("--depth-fps", type=int, default=30, help="Depth stream FPS. Default: 30")
-    parser.add_argument("--warmup-frames", type=int, default=20, help="Frames to discard before saving. Default: 20")
+    parser.add_argument("--warmup-frames", type=int, default=10, help="Frames to discard before saving. Default: 20")
     parser.add_argument("--auto-exposure", choices=("on", "off", "default"), default="on", help="Auto exposure mode: on=force enable, off=force disable, default=keep camera current setting. Default: on")
     parser.add_argument("--enable-post-processing", action="store_true", help="Apply Viewer-like Stereo Module post-processing to d2rgb.npy. Default: disabled")
     parser.add_argument("--preview-window-name", default="RealSense Capture", help="Preview window name for continuous/manual mode. Default: RealSense Capture")
