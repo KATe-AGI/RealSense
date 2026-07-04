@@ -242,7 +242,7 @@ Post-Processing: 默认关闭，可通过 --enable-post-processing 开启
 --color-width 640 --color-height 480 --color-fps 30 --depth-width 640 --depth-height 480 --depth-fps 30
 ```
 
-`depth -> color` 对齐后的 raw depth 分辨率会跟 color 图一致。因此如果 color 是 `1920x1080`，默认保存的 `d2rgb.npy` 也是 `1920x1080`。如果运行时添加 `--enable-post-processing`，Viewer 风格后处理会作用到 `d2rgb.npy`；其中 Decimation Filter 会下采样，因此保存结果通常会变成 `960x540`。
+`depth -> color` 对齐后的 raw depth 分辨率会跟 color 图一致。因此如果 color 是 `1920x1080`，默认保存的 `d2rgb.npy` 也是 `1920x1080`。如果运行时添加 `--enable-post-processing`，Viewer 风格后处理会另存为 `d2rgb_filtered.npy`；其中 Decimation Filter 会下采样，因此 filtered 结果通常会变成 `960x540`。
 
 ## 5. Pipeline 与 Config
 
@@ -481,7 +481,7 @@ aligned_frames = align.process(frames)
 aligned_depth = aligned_frames.get_depth_frame()
 ```
 
-对齐后的 raw depth 图像具有 color 的分辨率和内参。当前项目默认把 raw aligned depth 保存为 `d2rgb.npy`，所以默认可以和 `color.png` 做像素级对应。如果添加 `--enable-post-processing`，`d2rgb.npy` 会变成后处理结果，尺寸可能小于 `color.png`。
+对齐后的 raw depth 图像具有 color 的分辨率和内参。当前项目默认把 raw aligned depth 保存为 `d2rgb.npy`，所以默认可以和 `color.png` 做像素级对应。如果添加 `--enable-post-processing`，后处理结果会另存为 `d2rgb_filtered.npy`，尺寸可能小于 `color.png`。
 
 ## 10. 点云接口
 
@@ -509,13 +509,13 @@ rs.save_to_ply
 
 ```text
 默认不保存 PLY。
-默认以 color.png + raw aligned d2rgb.npy 作为当前采集样本；添加 `--enable-post-processing` 后，d2rgb.npy 会变成后处理深度。
+默认以 color.png + raw aligned d2rgb.npy 作为当前采集样本；添加 `--enable-post-processing` 后，会额外保存 `d2rgb_filtered.npy` 作为后处理深度。
 需要三维检查、标定或空间验证时，再打开点云导出。
 ```
 
 ## 11. 后处理滤波接口
 
-SDK 提供多个 depth 后处理模块。注意：滤波会改变深度数据。当前项目默认不启用后处理；只有添加 `--enable-post-processing` 时才按 Viewer 默认风格把后处理作用到 `d2rgb.npy`。
+SDK 提供多个 depth 后处理模块。注意：滤波会改变深度数据。当前项目默认不启用后处理；只有添加 `--enable-post-processing` 时才按 Viewer 默认风格另存 `d2rgb_filtered.npy`。
 
 常用滤波器：
 
@@ -543,7 +543,7 @@ filtered = temporal.process(filtered)
 ```text
 默认保存 raw aligned depth。
 启用后处理时，raw aligned depth 的 stream 信息记录在 meta.json 中。
-启用后处理时，保存的 d2rgb.npy 是后处理结果。
+启用后处理时，保存的 `d2rgb.npy` 仍是 raw aligned depth，另存的 `d2rgb_filtered.npy` 是后处理结果。
 meta.json 中记录每个后处理模块是否启用、是否实际应用、以及 block option。
 如果后续需要严格像素级测量，可以增加 raw depth 额外输出。
 ```

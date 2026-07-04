@@ -34,10 +34,14 @@ def build_metadata(
         "settings": captured.settings,
         "streams": captured.streams,
         "frames": captured.frames,
-        "files": files.as_dict(),
+        "files": {
+            **files.as_dict(),
+            "d2rgb_filtered_saved": captured.filtered_depth_image is not None,
+        },
         "pointcloud": {
             "enabled": config.save_pointcloud,
-            "path": None,
+            "path": files.pointcloud if config.save_pointcloud else None,
+            "method": "pyrealsense2.rs.pointcloud.export_to_ply" if config.save_pointcloud else None,
         },
     }
     return metadata

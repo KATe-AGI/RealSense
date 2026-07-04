@@ -25,8 +25,10 @@ class NamingTests(unittest.TestCase):
 
         self.assertEqual(files.color, "20260610_153035_316_color.png")
         self.assertEqual(files.d2rgb, "20260610_153035_316_d2rgb.npy")
+        self.assertEqual(files.d2rgb_filtered, "20260610_153035_316_d2rgb_filtered.npy")
         self.assertEqual(files.d2rgb_vis, "20260610_153035_316_d2rgb_vis.jpg")
         self.assertEqual(files.meta, "20260610_153035_316_meta.json")
+        self.assertEqual(files.pointcloud, "20260610_153035_316_pointcloud.ply")
 
     def test_unique_sample_id_does_not_return_existing_file_prefix(self):
         with tempfile.TemporaryDirectory() as temp_dir:

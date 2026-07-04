@@ -18,8 +18,10 @@ INDEX_HEADER = [
     "timestamp",
     "color_path",
     "d2rgb_path",
+    "d2rgb_filtered_path",
     "d2rgb_vis_path",
     "meta_path",
+    "pointcloud_path",
 ]
 
 
@@ -33,8 +35,10 @@ def file_names_for_sample(sample_id: str) -> SampleFileNames:
     return SampleFileNames(
         color=f"{sample_id}_color.png",
         d2rgb=f"{sample_id}_d2rgb.npy",
+        d2rgb_filtered=f"{sample_id}_d2rgb_filtered.npy",
         d2rgb_vis=f"{sample_id}_d2rgb_vis.jpg",
         meta=f"{sample_id}_meta.json",
+        pointcloud=f"{sample_id}_pointcloud.ply",
     )
 
 
@@ -45,8 +49,10 @@ def ensure_unique_sample_id(output_dir: Path) -> tuple[str, str]:
         paths = [
             output_dir / files.color,
             output_dir / files.d2rgb,
+            output_dir / files.d2rgb_filtered,
             output_dir / files.d2rgb_vis,
             output_dir / files.meta,
+            output_dir / files.pointcloud,
         ]
         if not any(path.exists() for path in paths):
             return sample_id, timestamp
@@ -71,10 +77,18 @@ def append_index_row(index_path: Path, result: CaptureResult) -> None:
                 result.timestamp,
                 result.files.color,
                 result.files.d2rgb,
+                result.files.d2rgb_filtered if result.metadata["files"]["d2rgb_filtered_saved"] else "",
                 result.files.d2rgb_vis,
                 result.files.meta,
+                result.files.pointcloud if result.metadata["pointcloud"]["enabled"] else "",
             ]
         )
+
+
+def save_pointcloud_ply(path: Path, captured: CapturedFrames) -> None:
+    if captured.pointcloud_points is None or captured.pointcloud_texture_frame is None:
+        raise SampleSaveError("Point cloud export was requested, but no RealSense point cloud data is available.")
+    captured.pointcloud_points.export_to_ply(str(path), captured.pointcloud_texture_frame)
 
 
 def save_capture(
@@ -102,11 +116,15 @@ def save_capture(
     try:
         Image.fromarray(captured.color_image).save(result.color_path)
         np.save(result.d2rgb_path, captured.depth_image)
+        if captured.filtered_depth_image is not None:
+            np.save(result.d2rgb_filtered_path, captured.filtered_depth_image)
         Image.fromarray(captured.depth_visualization_image).save(result.d2rgb_vis_path, quality=95)
+        if config.save_pointcloud:
+            save_pointcloud_ply(result.pointcloud_path, captured)
         with result.meta_path.open("w", encoding="utf-8") as meta_file:
             json.dump(metadata, meta_file, indent=2, ensure_ascii=False)
         append_index_row(index_path, result)
-    except OSError as error:
+    except (OSError, RuntimeError) as error:
         raise SampleSaveError(f"Failed to save captured sample {sample_id}: {error}") from error
 
     return result

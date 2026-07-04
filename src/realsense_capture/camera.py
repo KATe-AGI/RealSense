@@ -125,6 +125,7 @@ class RealSenseCamera:
         self.auto_exposure_state: list[dict[str, Any]] = []
         self.post_processing_blocks = self._build_post_processing_blocks()
         self.colorizer = self._build_colorizer()
+        self.pointcloud = rs.pointcloud()
 
     def __enter__(self) -> RealSenseCamera:
         self.start()
@@ -202,8 +203,19 @@ class RealSenseCamera:
             raise FrameCaptureError("Failed to retrieve both color and aligned depth frames.")
 
         color_image = np.asanyarray(color_frame.get_data()).copy()
-        depth_image = np.asanyarray(processed_depth_frame.get_data()).copy()
+        depth_image = np.asanyarray(depth_frame.get_data()).copy()
+        filtered_depth_image = (
+            np.asanyarray(processed_depth_frame.get_data()).copy()
+            if self.config.enable_post_processing
+            else None
+        )
         depth_visualization_image = np.asanyarray(self.colorizer.colorize(processed_depth_frame).get_data()).copy()
+        pointcloud_points = None
+        pointcloud_texture_frame = None
+        if self.config.save_pointcloud:
+            self.pointcloud.map_to(color_frame)
+            pointcloud_points = self.pointcloud.calculate(depth_frame)
+            pointcloud_texture_frame = color_frame
 
         device = self._device()
         depth_sensor = device.first_depth_sensor()
@@ -239,6 +251,9 @@ class RealSenseCamera:
                 "depth_raw": _frame_metadata(depth_frame),
                 "depth": _frame_metadata(processed_depth_frame),
             },
+            filtered_depth_image=filtered_depth_image,
+            pointcloud_points=pointcloud_points,
+            pointcloud_texture_frame=pointcloud_texture_frame,
         )
 
     def _device(self) -> rs.device:
@@ -267,10 +282,10 @@ class RealSenseCamera:
             blocks.append(("spatial_filter", rs.spatial_filter()))
         if self.config.enable_temporal_filter:
             blocks.append(("temporal_filter", rs.temporal_filter()))
-        if self.config.enable_hole_filling_filter:
-            blocks.append(("hole_filling_filter", rs.hole_filling_filter()))
         if self.config.enable_disparity_to_depth:
             blocks.append(("disparity_to_depth", rs.disparity_transform(False)))
+        if self.config.enable_hole_filling_filter:
+            blocks.append(("hole_filling_filter", rs.hole_filling_filter()))
         return blocks
 
     def _build_colorizer(self) -> rs.colorizer:
@@ -327,8 +342,8 @@ class RealSenseCamera:
             ("depth_to_disparity", self.config.enable_post_processing and self.config.enable_depth_to_disparity),
             ("spatial_filter", self.config.enable_post_processing and self.config.enable_spatial_filter),
             ("temporal_filter", self.config.enable_post_processing and self.config.enable_temporal_filter),
-            ("hole_filling_filter", self.config.enable_post_processing and self.config.enable_hole_filling_filter),
             ("disparity_to_depth", self.config.enable_post_processing and self.config.enable_disparity_to_depth),
+            ("hole_filling_filter", self.config.enable_post_processing and self.config.enable_hole_filling_filter),
         ]
         block_map = dict(self.post_processing_blocks)
         return [

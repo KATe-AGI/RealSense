@@ -22,7 +22,7 @@ class CaptureConfig:
     stereo_histogram_equalization_enabled: bool = True
     enable_decimation_filter: bool = True
     enable_rotation_filter: bool = False
-    enable_hdr_merge: bool = True
+    enable_hdr_merge: bool = False
     enable_sequence_id_filter: bool = False
     enable_threshold_filter: bool = False
     enable_depth_to_disparity: bool = True

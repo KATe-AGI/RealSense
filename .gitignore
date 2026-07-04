@@ -36,6 +36,7 @@ Desktop.ini
 *.jpeg
 *.npy
 index.csv
+camera_data/
 
 # Claude
 .claude/
