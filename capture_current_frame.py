@@ -31,7 +31,6 @@ Windows CLI examples:
 # 单帧采集--(供SDK二开用)
 python capture_current_frame.py `
   --mode single `
-  --save-pointcloud `
   --output-dir camera_data
 
 # 连续采集：总时长 10 秒，每 1 秒保存一帧 (采集数据集用)
@@ -39,13 +38,11 @@ python capture_current_frame.py `
   --mode continuous `
   --duration-s 20 `
   --interval-s 1 `
-  --save-pointcloud `
   --output-dir camera_data
 
 # 按键采集: 预览窗口持续显示, 按空格保存当前帧, q/Esc 退出 (手眼标定用)
 python capture_current_frame.py `
   --mode manual `
-  --save-pointcloud `
   --output-dir camera_data
 """
 

@@ -125,7 +125,6 @@ class RealSenseCamera:
         self.auto_exposure_state: list[dict[str, Any]] = []
         self.post_processing_blocks = self._build_post_processing_blocks()
         self.colorizer = self._build_colorizer()
-        self.pointcloud = rs.pointcloud()
 
     def __enter__(self) -> RealSenseCamera:
         self.start()
@@ -210,13 +209,6 @@ class RealSenseCamera:
             else None
         )
         depth_visualization_image = np.asanyarray(self.colorizer.colorize(processed_depth_frame).get_data()).copy()
-        pointcloud_points = None
-        pointcloud_texture_frame = None
-        if self.config.save_pointcloud:
-            self.pointcloud.map_to(color_frame)
-            pointcloud_points = self.pointcloud.calculate(depth_frame)
-            pointcloud_texture_frame = color_frame
-
         device = self._device()
         depth_sensor = device.first_depth_sensor()
         device_info = {
@@ -252,8 +244,6 @@ class RealSenseCamera:
                 "depth": _frame_metadata(processed_depth_frame),
             },
             filtered_depth_image=filtered_depth_image,
-            pointcloud_points=pointcloud_points,
-            pointcloud_texture_frame=pointcloud_texture_frame,
         )
 
     def _device(self) -> rs.device:

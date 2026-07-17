@@ -18,21 +18,6 @@ from realsense_capture.models import CapturedFrames
 from realsense_capture.storage import INDEX_HEADER, save_capture
 
 
-class FakePoints:
-    def export_to_ply(self, path: str, texture_frame) -> None:
-        Path(path).write_text(
-            "ply\n"
-            "format ascii 1.0\n"
-            "element vertex 1\n"
-            "property float x\n"
-            "property float y\n"
-            "property float z\n"
-            "end_header\n"
-            "0 0 1\n",
-            encoding="ascii",
-        )
-
-
 def _dummy_capture() -> CapturedFrames:
     return CapturedFrames(
         color_image=np.zeros((4, 6, 3), dtype=np.uint8),
@@ -129,21 +114,33 @@ class StorageTests(unittest.TestCase):
                 save_pointcloud=True,
             )
             captured = _dummy_capture()
-            captured = CapturedFrames(
-                **{
-                    **captured.__dict__,
-                    "pointcloud_points": FakePoints(),
-                    "pointcloud_texture_frame": object(),
-                }
-            )
             result = save_capture(config, captured)
 
             self.assertTrue(result.pointcloud_path.exists())
             metadata = json.loads(result.meta_path.read_text(encoding="utf-8"))
             self.assertTrue(metadata["pointcloud"]["enabled"])
             self.assertEqual(metadata["pointcloud"]["path"], result.files.pointcloud)
-            self.assertEqual(metadata["pointcloud"]["method"], "pyrealsense2.rs.pointcloud.export_to_ply")
-            self.assertTrue(result.pointcloud_path.read_text(encoding="ascii").startswith("ply\n"))
+            self.assertEqual(metadata["pointcloud"]["method"], "aligned_depth_deprojection_binary_ply")
+
+            ply_bytes = result.pointcloud_path.read_bytes()
+            header_end = ply_bytes.index(b"end_header\n") + len(b"end_header\n")
+            header = ply_bytes[:header_end].decode("ascii")
+            self.assertIn("format binary_little_endian 1.0", header)
+            self.assertIn("element vertex 20", header)
+
+            vertex_dtype = np.dtype(
+                [
+                    ("x", "<f4"),
+                    ("y", "<f4"),
+                    ("z", "<f4"),
+                    ("red", "u1"),
+                    ("green", "u1"),
+                    ("blue", "u1"),
+                ]
+            )
+            vertices = np.frombuffer(ply_bytes, dtype=vertex_dtype, count=20, offset=header_end)
+            self.assertTrue(np.all(vertices["z"] > 0))
+            self.assertAlmostEqual(float(vertices["z"][0]), 0.1, places=6)
 
     def test_save_capture_writes_filtered_depth_when_available(self):
         with tempfile.TemporaryDirectory() as temp_dir:

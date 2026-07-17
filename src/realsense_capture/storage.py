@@ -85,10 +85,73 @@ def append_index_row(index_path: Path, result: CaptureResult) -> None:
         )
 
 
+def _aligned_depth_intrinsics(captured: CapturedFrames) -> dict:
+    stream = captured.streams.get("depth_aligned_to_color_raw") or captured.streams.get("depth_aligned_to_color") or {}
+    intrinsics = stream.get("intrinsics")
+    if not intrinsics:
+        raise SampleSaveError("Point cloud export requires aligned depth intrinsics.")
+    return intrinsics
+
+
 def save_pointcloud_ply(path: Path, captured: CapturedFrames) -> None:
-    if captured.pointcloud_points is None or captured.pointcloud_texture_frame is None:
-        raise SampleSaveError("Point cloud export was requested, but no RealSense point cloud data is available.")
-    captured.pointcloud_points.export_to_ply(str(path), captured.pointcloud_texture_frame)
+    intrinsics = _aligned_depth_intrinsics(captured)
+    depth_image = captured.depth_image
+    color_image = captured.color_image
+    valid_mask = depth_image > 0
+
+    if color_image.ndim != 3 or color_image.shape[2] < 3:
+        raise SampleSaveError("Point cloud export requires an RGB color image.")
+    if color_image.shape[:2] != depth_image.shape[:2]:
+        raise SampleSaveError("Point cloud export requires color and aligned depth images with matching dimensions.")
+
+    valid_count = int(np.count_nonzero(valid_mask))
+    v_grid, u_grid = np.indices(depth_image.shape)
+    u = u_grid[valid_mask].astype(np.float32)
+    v = v_grid[valid_mask].astype(np.float32)
+    z = depth_image[valid_mask].astype(np.float32) * float(captured.depth_scale)
+
+    fx = float(intrinsics["fx"])
+    fy = float(intrinsics["fy"])
+    ppx = float(intrinsics["ppx"])
+    ppy = float(intrinsics["ppy"])
+    x = (u - ppx) / fx * z
+    y = (v - ppy) / fy * z
+    colors = color_image[valid_mask, :3].astype(np.uint8)
+
+    vertices = np.empty(
+        valid_count,
+        dtype=[
+            ("x", "<f4"),
+            ("y", "<f4"),
+            ("z", "<f4"),
+            ("red", "u1"),
+            ("green", "u1"),
+            ("blue", "u1"),
+        ],
+    )
+    vertices["x"] = x
+    vertices["y"] = y
+    vertices["z"] = z
+    vertices["red"] = colors[:, 0]
+    vertices["green"] = colors[:, 1]
+    vertices["blue"] = colors[:, 2]
+
+    header = (
+        "ply\n"
+        "format binary_little_endian 1.0\n"
+        "comment pointcloud saved from aligned D2RGB depth\n"
+        f"element vertex {valid_count}\n"
+        "property float x\n"
+        "property float y\n"
+        "property float z\n"
+        "property uchar red\n"
+        "property uchar green\n"
+        "property uchar blue\n"
+        "end_header\n"
+    )
+    with path.open("wb") as ply_file:
+        ply_file.write(header.encode("ascii"))
+        vertices.tofile(ply_file)
 
 
 def save_capture(

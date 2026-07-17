@@ -41,7 +41,7 @@ def build_metadata(
         "pointcloud": {
             "enabled": config.save_pointcloud,
             "path": files.pointcloud if config.save_pointcloud else None,
-            "method": "pyrealsense2.rs.pointcloud.export_to_ply" if config.save_pointcloud else None,
+            "method": "aligned_depth_deprojection_binary_ply" if config.save_pointcloud else None,
         },
     }
     return metadata

@@ -510,7 +510,7 @@ rs.save_to_ply
 ```text
 默认不保存 PLY。
 默认以 color.png + raw aligned d2rgb.npy 作为当前采集样本；添加 `--enable-post-processing` 后，会额外保存 `d2rgb_filtered.npy` 作为后处理深度。
-需要三维检查、标定或空间验证时，再打开点云导出。
+需要三维检查、标定或空间验证时，再打开点云导出。当前项目不会调用 `rs.points.export_to_ply` 写文件，而是从 raw aligned `d2rgb.npy` 同源的深度图和内参反投影生成 PLY，因此 PLY 的 +Z 与 `d2rgb.npy` 一致，指向场景。
 ```
 
 ## 11. 后处理滤波接口
